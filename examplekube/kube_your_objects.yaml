@@ -1,0 +1,102 @@
+# Server deployment
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpsserver
+spec:
+  selector:
+    matchLabels:
+      run: httpsserver
+  template:
+    metadata:
+      labels:
+        run: httpsserver
+    spec:
+      containers:
+      - image: beyjor/httpsserver
+        name: httpsserver
+        ports:
+        - containerPort: 8181
+
+        volumeMounts:
+        - mountPath: /examplecerts
+          name: certs-storage
+
+      volumes:
+      - name: certs-storage
+        secret:
+          secretName: examplecerts
+
+---
+
+# Passthrough deployment
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpspassthrough
+spec:
+  selector:
+    matchLabels:
+      run: httpspassthrough
+  template:
+    metadata:
+      labels:
+        run: httpspassthrough
+    spec:
+      containers:
+      - image: beyjor/httpspassthrough
+        name: httpspassthrough
+        ports:
+        - containerPort: 8383
+
+        env:
+        - name: CLIENTHOST
+          value: httpsserver
+
+        volumeMounts:
+        - mountPath: /examplecerts
+          name: certs-storage
+
+      volumes:
+      - name: certs-storage
+        secret:
+          secretName: examplecerts
+
+---
+
+# Server service
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpsserver
+  labels:
+    run: httpsserver
+spec:
+  type: NodePort
+  ports:
+  - name: "8181"
+    port: 8181
+  selector:
+    run: httpsserver
+
+---
+
+# Passthrough service
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpspassthrough
+  labels:
+    run: httpspassthrough
+spec:
+  type: NodePort
+  ports:
+  - name: "8383"
+    port: 8383
+  selector:
+    run: httpspassthrough
+
